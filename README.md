@@ -6,9 +6,6 @@ landmark-guided classifier tail: `LandmarkGateFusion` uses facial landmarks to
 gate the three POSTER token stages, and `KANHead` replaces the heavier original
 classification head with a KAN-style lightweight head.
 
-This repository keeps the training and evaluation code focused on the final
-POSTER-KAN branch.
-
 ## Acknowledgement
 
 Part of this codebase is adapted from the original POSTER V2 implementation by
