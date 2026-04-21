@@ -1,0 +1,28 @@
+model:
+  variant: poster-kan
+  kan_hidden_dim: 256
+  kan_num_knots: 8
+
+backbone:
+  preserve_poster_trunk: true
+  keep_dual_backbone: true
+  keep_three_stage_fusion: true
+  use_landmark_gate_fusion: true
+  use_kan_head: true
+
+loss:
+  classification: balanced-softmax
+  label_smoothing: 0.05
+
+optimization:
+  optimizer: adam
+  poster_kan_new_lr: 1.0e-4
+  poster_kan_backbone_lr_scale: 0.05
+  freeze_backbone: false
+  lr:
+    raf_db: 3.5e-5
+    affectnet7: 1.0e-6
+    affectnet8: 1.0e-6
+  weight_decay: 1.0e-4
+  batch_size: 128
+  epochs: 20

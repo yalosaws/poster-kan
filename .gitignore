@@ -1,0 +1,9 @@
+*.py[cod]
+outputs/
+logs/
+runs/
+
+*.pth
+*.pth.tar
+*.pt
+*.ckpt
