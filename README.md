@@ -6,16 +6,39 @@ landmark-guided classifier tail: `LandmarkGateFusion` uses facial landmarks to
 gate the three POSTER token stages, and `KANHead` replaces the heavier original
 classification head with a KAN-style lightweight head.
 
-This repository keeps the training and evaluation code focused on the final
-POSTER-KAN branch.
+This repository provides the model definition and training scripts for
+POSTER-KAN.
 
-## Acknowledgement
+## Results
+
+POSTER-KAN is designed to keep the POSTER V2 dual-backbone feature extractor
+while making the classifier side lighter and faster. With training-time
+distillation, the model reaches a comparable RAF-DB accuracy with a much
+smaller inference footprint.
+
+| Model | Dataset | Acc (%) | Params (M) | FLOPs (G) | Latency b1 (ms) | Latency b32 (ms) |
+|---|---|---:|---:|---:|---:|---:|
+| POSTER V2 | RAF-DB | 92.21 | 45.344 | 8.640 | 8.050 | 19.670 |
+| POSTER-KAN v1 | RAF-DB | 90.998 | 29.588 | 6.391 | 7.908 | 15.231 |
+| POSTER-KAN v2 distill | RAF-DB | 92.07 | 29.588 | 6.391 | 7.908 | 15.231 |
+
+On AffectNet-7, the same distillation strategy also gives a small accuracy gain.
+
+| Model | Dataset | Acc (%) |
+|---|---|---:|
+| POSTER V2 | AffectNet-7 | 67.49 |
+| POSTER-KAN v2 distill | AffectNet-7 | 67.600 |
+
+POSTER V2 accuracy follows the original paper. Efficiency numbers are measured
+with the profiling and benchmark scripts in this repository.
+
+## Acknowledgements
 
 Part of this codebase is adapted from the original POSTER V2 implementation by
 Talented-Q. The reused POSTER V2 code remains under its original MIT license
 notice, and the POSTER-KAN modifications are released under the same MIT terms.
 
-## Structure
+## Repository Structure
 
 ```text
 .
@@ -50,7 +73,7 @@ dataset_root/
     └── ...
 ```
 
-## Setup
+## Installation
 
 Install the Python dependencies:
 
@@ -89,7 +112,7 @@ python train_poster_kan.py \
 Checkpoints are written to `outputs/` by default. You can change that with
 `--output-dir`.
 
-## Distillation
+## Distillation Fine-Tuning
 
 POSTER-KAN can also be fine-tuned with a teacher checkpoint:
 
