@@ -16,7 +16,7 @@ import torchvision.transforms as transforms
 from sklearn import metrics
 from thop import profile
 
-from models import POSTER_KAN
+from models import POSTER_KAN, POSTER_KAN_PA
 from optim import SAM
 
 
@@ -85,6 +85,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train or evaluate POSTER-KAN.")
     parser.add_argument("--data", type=str, required=True, help="ImageFolder root containing train/ and valid/.")
     parser.add_argument("--data-type", default="RAF-DB", choices=["RAF-DB", "AffectNet-7", "CAER-S"])
+    parser.add_argument(
+        "--model-variant",
+        default="poster-kan",
+        choices=["poster-kan", "poster-kan-pa"],
+        help="Student model variant.",
+    )
     parser.add_argument("--epochs", default=20, type=int)
     parser.add_argument("--start-epoch", default=0, type=int)
     parser.add_argument("-b", "--batch-size", default=128, type=int)
@@ -107,8 +113,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resume", default=None, type=str)
     parser.add_argument("--evaluate", default=None, type=str)
     parser.add_argument("--teacher-checkpoint", default=None, type=str)
+    parser.add_argument(
+        "--teacher-model-variant",
+        default="poster-kan",
+        choices=["poster-kan", "poster-kan-pa"],
+        help="Teacher model variant used only when distillation is enabled.",
+    )
     parser.add_argument("--distill-lambda", default=0.0, type=float)
     parser.add_argument("--distill-temperature", default=2.0, type=float)
+    parser.add_argument("--pa-num-prototypes", default=7, type=int)
+    parser.add_argument("--pa-prototype-scale-init", default=0.0, type=float)
+    parser.add_argument("--pa-no-gate", action="store_true")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), type=str)
     parser.add_argument("--benchmark-speed", action="store_true")
     parser.add_argument("--no-profile", action="store_true")
@@ -164,14 +179,26 @@ def build_eval_transform() -> transforms.Compose:
     )
 
 
-def build_model(args: argparse.Namespace) -> POSTER_KAN:
-    return POSTER_KAN(
-        img_size=224,
-        num_classes=7,
-        landmark_jitter=args.landmark_jitter,
-        kan_hidden_dim=args.poster_kan_hidden_dim,
-        kan_num_knots=args.poster_kan_knots,
-    )
+def build_model_variant(variant: str, args: argparse.Namespace) -> torch.nn.Module:
+    common_kwargs = {
+        "img_size": 224,
+        "num_classes": 7,
+        "landmark_jitter": args.landmark_jitter,
+        "kan_hidden_dim": args.poster_kan_hidden_dim,
+        "kan_num_knots": args.poster_kan_knots,
+    }
+    if variant == "poster-kan-pa":
+        return POSTER_KAN_PA(
+            **common_kwargs,
+            num_prototypes=args.pa_num_prototypes,
+            prototype_scale_init=args.pa_prototype_scale_init,
+            use_landmark_gate_fusion=not args.pa_no_gate,
+        )
+    return POSTER_KAN(**common_kwargs)
+
+
+def build_model(args: argparse.Namespace) -> torch.nn.Module:
+    return build_model_variant(args.model_variant, args)
 
 
 def build_criterion(args: argparse.Namespace, class_counts: torch.Tensor | None) -> torch.nn.Module:
@@ -426,7 +453,7 @@ def main() -> None:
 
     teacher_model = None
     if args.teacher_checkpoint and args.distill_lambda > 0:
-        teacher_model = build_model(args)
+        teacher_model = build_model_variant(args.teacher_model_variant, args)
         teacher_model = torch.nn.DataParallel(teacher_model).to(args.device) if args.device.type == "cuda" else teacher_model.to(args.device)
         load_model_checkpoint(teacher_model, load_checkpoint(args.teacher_checkpoint))
         teacher_model.eval()
