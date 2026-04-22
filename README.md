@@ -7,7 +7,9 @@ gate the three POSTER token stages, and `KANHead` replaces the heavier original
 classification head with a KAN-style lightweight head.
 
 This repository provides the model definition and training scripts for
-POSTER-KAN.
+POSTER-KAN. It also includes an optional prototype-adaptive KAN head variant
+(`POSTER-KAN-PA`), which keeps the original POSTER-KAN trunk and only swaps the
+classifier head.
 
 ## Results
 
@@ -21,6 +23,7 @@ smaller inference footprint.
 | POSTER V2 | RAF-DB | 92.21 | 45.344 | 8.640 | 8.050 | 19.670 |
 | POSTER-KAN v1 | RAF-DB | 90.998 | 29.588 | 6.391 | 7.908 | 15.231 |
 | POSTER-KAN v2 distill | RAF-DB | 92.07 | 29.588 | 6.391 | 7.908 | 15.231 |
+| POSTER-KAN-PA | RAF-DB | 92.107 | 29.588 | 6.391 | same trunk as POSTER-KAN | same trunk as POSTER-KAN |
 
 On AffectNet-7, the same distillation strategy also gives a small accuracy gain.
 
@@ -50,6 +53,7 @@ notice, and the POSTER-KAN modifications are released under the same MIT terms.
 │   ├── landmark_tokens.py
 │   ├── mobilefacenet.py
 │   ├── poster_kan.py
+│   ├── poster_kan_pa.py
 │   └── vit_model.py
 ├── optim/
 │   └── sam.py
@@ -112,6 +116,25 @@ python train_poster_kan.py \
 Checkpoints are written to `outputs/` by default. You can change that with
 `--output-dir`.
 
+To train the prototype-adaptive KAN head variant, keep the same entry point and
+switch the model variant:
+
+```bash
+python train_poster_kan.py \
+  --data /path/to/RAF-DB \
+  --data-type RAF-DB \
+  --model-variant poster-kan-pa \
+  --epochs 20 \
+  --batch-size 128 \
+  --lr 3.5e-5 \
+  --poster-kan-new-lr 1.0e-4 \
+  --poster-kan-backbone-lr-scale 0.05 \
+  --pa-num-prototypes 7 \
+  --pa-prototype-scale-init 0.02 \
+  --loss balanced-softmax \
+  --label-smoothing 0.05
+```
+
 ## Distillation Fine-Tuning
 
 POSTER-KAN can also be fine-tuned with a teacher checkpoint:
@@ -120,15 +143,18 @@ POSTER-KAN can also be fine-tuned with a teacher checkpoint:
 python train_poster_kan.py \
   --data /path/to/RAF-DB \
   --data-type RAF-DB \
+  --model-variant poster-kan-pa \
   --init-weights /path/to/poster_kan_v1_best.pth \
+  --teacher-model-variant poster-kan \
   --teacher-checkpoint /path/to/teacher_best.pth \
   --distill-lambda 0.25 \
   --distill-temperature 2.0 \
-  --epochs 12 \
+  --epochs 16 \
   --batch-size 128 \
-  --lr 5e-7 \
-  --poster-kan-new-lr 6e-5 \
-  --poster-kan-backbone-lr-scale 1.0
+  --lr 4e-6 \
+  --poster-kan-new-lr 8e-5 \
+  --poster-kan-backbone-lr-scale 0.05 \
+  --pa-prototype-scale-init 0.02
 ```
 
 ## Evaluation

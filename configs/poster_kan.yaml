@@ -2,6 +2,9 @@ model:
   variant: poster-kan
   kan_hidden_dim: 256
   kan_num_knots: 8
+  pa_num_prototypes: 7
+  pa_prototype_scale_init: 0.0
+  pa_use_landmark_gate_fusion: true
 
 backbone:
   preserve_poster_trunk: true
